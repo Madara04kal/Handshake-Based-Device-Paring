@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sender · Board A — Shake to Pair</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d11;
+    --panel:#151922;
+    --panel-2:#1b202b;
+    --border:#262c38;
+    --inset:#08090c;
+    --text:#edf1f7;
+    --muted:#7d8798;
+    --muted-2:#4c5563;
+    --sender:#5eead4;
+    --sender-dim:rgba(94,234,212,0.10);
+    --receiver:#b8a6ff;
+    --receiver-dim:rgba(184,166,255,0.10);
+    --amber:#f5a623;
+    --green:#34d399;
+    --coral:#ff6b6b;
+    --radius:14px;
+    --radius-sm:8px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse 900px 460px at 50% -8%, rgba(94,234,212,0.07), transparent 62%),
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px 60px;
+  }
+  a{color:inherit;}
+  .wrap{width:100%;max-width:640px;}
+
+  .breadcrumb{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:18px;
+    transition:color .15s;
+  }
+  .breadcrumb:hover{color:var(--sender);}
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:26px 26px 24px;
+    box-shadow:0 30px 60px -24px rgba(0,0,0,0.65);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    color:var(--sender);
+    text-transform:uppercase;
+    margin:0 0 6px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--sender);}
+  .titlerow{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  h1{
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+    font-size:26px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .pill{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+  }
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);}
+  .pill.disconnected .dot{background:var(--coral);}
+  .pill.connecting .dot{background:var(--amber);animation:blink 1s infinite;}
+  .pill.connected .dot{background:var(--sender);}
+  .pill.keyed .dot{background:var(--green);}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  .unsupported{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--amber);
+    background:rgba(245,166,35,0.08);
+    border:1px solid rgba(245,166,35,0.3);
+    border-radius:var(--radius-sm);
+    padding:10px 12px;
+    margin-bottom:18px;
+    display:none;
+  }
+  .unsupported.show{display:block;}
+
+  /* ---------- device map ---------- */
+  .map-wrap{
+    background:var(--inset);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:6px 4px 2px;
+    margin-bottom:20px;
+    overflow:hidden;
+  }
+  svg#deviceMap{display:block;width:100%;height:auto;}
+  .chip-body{fill:var(--panel-2);stroke:var(--muted-2);stroke-width:1.5;transition:stroke .3s, fill .3s;}
+  .chip-pin{stroke:var(--muted-2);stroke-width:2;transition:stroke .3s;}
+  .chip-letter{font-family:'Space Mono',monospace;font-weight:700;font-size:26px;fill:var(--muted);transition:fill .3s;}
+  .chip-label{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.06em;fill:var(--muted);}
+  .role-glow{opacity:0;transition:opacity .5s;}
+  #deviceMap[data-state] .chip-sender .chip-body{stroke:var(--sender);}
+  #deviceMap[data-state] .chip-sender .chip-letter{fill:var(--sender);}
+  #deviceMap[data-state] .chip-sender .role-glow{opacity:.35;}
+  .link-line{stroke:var(--muted-2);stroke-width:2;stroke-dasharray:6 6;fill:none;transition:stroke .3s;}
+  .bt-line{stroke:var(--muted-2);stroke-width:2;transition:stroke .3s;}
+  .bt-badge-ring{fill:none;stroke:var(--muted-2);stroke-width:1.5;transition:stroke .3s;}
+  .bt-badge-text{font-family:'IBM Plex Mono',monospace;font-size:10px;fill:var(--muted);transition:fill .3s;}
+  .no-ble-x{stroke:var(--muted-2);stroke-width:1.5;opacity:.6;}
+  .no-ble-label{font-family:'IBM Plex Mono',monospace;font-size:8.5px;fill:var(--muted-2);letter-spacing:.04em;}
+  .link-badge-ring{fill:var(--inset);stroke:var(--muted-2);stroke-width:1.5;transition:stroke .3s;}
+  .link-badge-icon{stroke:var(--muted-2);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s;}
+
+  #deviceMap[data-state="pairing"] .bt-line{stroke:var(--amber);}
+  #deviceMap[data-state="pairing"] .bt-badge-ring{stroke:var(--amber);}
+  #deviceMap[data-state="pairing"] .bt-badge-text{fill:var(--amber);}
+
+  #deviceMap[data-state="capturing"] .link-line,
+  #deviceMap[data-state="syncing"] .link-line,
+  #deviceMap[data-state="verifying"] .link-line{
+    stroke:var(--amber);
+    animation:dashflow .55s linear infinite;
+  }
+  #deviceMap[data-state="capturing"] .link-badge-ring,
+  #deviceMap[data-state="syncing"] .link-badge-ring,
+  #deviceMap[data-state="verifying"] .link-badge-ring{stroke:var(--amber);}
+  #deviceMap[data-state="capturing"] .link-badge-icon,
+  #deviceMap[data-state="syncing"] .link-badge-icon,
+  #deviceMap[data-state="verifying"] .link-badge-icon{stroke:var(--amber);}
+  @keyframes dashflow{to{stroke-dashoffset:-24;}}
+
+  #deviceMap[data-state="success"] .link-line{stroke:var(--green);stroke-dasharray:none;}
+  #deviceMap[data-state="success"] .link-badge-ring{stroke:var(--green);}
+  #deviceMap[data-state="success"] .link-badge-icon{stroke:var(--green);}
+  #deviceMap[data-state="success"] .chip-receiver .chip-body{stroke:var(--receiver);}
+  #deviceMap[data-state="success"] .chip-receiver .chip-letter{fill:var(--receiver);}
+  #deviceMap[data-state="success"] .chip-receiver .role-glow{opacity:.35;}
+
+  #deviceMap[data-state="fail"] .link-line{stroke:var(--coral);stroke-dasharray:none;}
+  #deviceMap[data-state="fail"] .link-badge-ring{stroke:var(--coral);}
+  #deviceMap[data-state="fail"] .link-badge-icon{stroke:var(--coral);}
+
+  .badge-idle{display:block;}
+  .badge-flow{display:none;}
+  .badge-check{display:none;}
+  .badge-x{display:none;}
+  #deviceMap[data-state="capturing"] .badge-idle,
+  #deviceMap[data-state="syncing"] .badge-idle,
+  #deviceMap[data-state="verifying"] .badge-idle,
+  #deviceMap[data-state="success"] .badge-idle,
+  #deviceMap[data-state="fail"] .badge-idle{display:none;}
+  #deviceMap[data-state="capturing"] .badge-flow,
+  #deviceMap[data-state="syncing"] .badge-flow,
+  #deviceMap[data-state="verifying"] .badge-flow{display:block;}
+  #deviceMap[data-state="success"] .badge-check{display:block;}
+  #deviceMap[data-state="fail"] .badge-x{display:block;}
+
+  /* ---------- stepper ---------- */
+  .stepper{
+    list-style:none;
+    display:flex;
+    padding:0;
+    margin:0 0 18px;
+    gap:0;
+  }
+  .step{
+    flex:1;
+    text-align:center;
+    position:relative;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--muted);
+  }
+  .step::before{
+    content:"";
+    position:absolute;
+    top:5px;left:-50%;width:100%;height:2px;
+    background:var(--border);
+    z-index:0;
+  }
+  .step:first-child::before{display:none;}
+  .step-dot{
+    display:block;
+    width:11px;height:11px;
+    border-radius:50%;
+    background:var(--muted-2);
+    margin:0 auto 6px;
+    position:relative;
+    z-index:1;
+    border:2px solid var(--panel);
+    transition:background .25s, box-shadow .25s;
+  }
+  .step[data-state="active"] .step-dot{background:var(--amber);box-shadow:0 0 0 4px rgba(245,166,35,0.16);animation:stepblink 1s infinite;}
+  .step[data-state="done"] .step-dot{background:var(--green);}
+  .step[data-state="fail"] .step-dot{background:var(--coral);}
+  .step[data-state="active"]{color:var(--amber);}
+  .step[data-state="done"]{color:var(--green);}
+  .step[data-state="fail"]{color:var(--coral);}
+  @keyframes stepblink{0%,100%{box-shadow:0 0 0 4px rgba(245,166,35,0.16);}50%{box-shadow:0 0 0 4px rgba(245,166,35,0.02);}}
+
+  .stage-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--text);
+    min-height:18px;
+    margin:0 0 18px;
+  }
+  .stage-line .muted{color:var(--muted);}
+
+  /* ---------- waveform ---------- */
+  .waveform-wrap{
+    background:var(--inset);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:18px;
+  }
+  svg#wave{display:block;width:100%;height:64px;}
+  .wave-line{fill:none;stroke:var(--sender);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke 0.4s;}
+  .wave-baseline{stroke:var(--border);stroke-width:1;}
+  .wave-line.state-keyed{stroke:var(--green);}
+  .wave-line.state-fail{stroke:var(--coral);}
+
+  .buttons{display:flex;gap:10px;margin-bottom:18px;}
+  button{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    font-weight:600;
+    padding:11px 16px;
+    border-radius:8px;
+    border:1px solid transparent;
+    cursor:pointer;
+    transition:opacity 0.2s, transform 0.1s, border-color .2s;
+  }
+  button:active{transform:scale(0.98);}
+  button:disabled{opacity:0.35;cursor:not-allowed;}
+  .btn-primary{background:var(--sender);color:#08130f;}
+  .btn-primary:hover:not(:disabled){opacity:0.88;}
+  .btn-secondary{background:transparent;border-color:var(--border);color:var(--text);}
+  .btn-secondary:hover:not(:disabled){border-color:var(--sender);}
+  button:focus-visible{outline:2px solid var(--sender);outline-offset:2px;}
+
+  .log-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin:0 0 6px;
+  }
+  .log{
+    background:var(--inset);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:12px 14px;
+    height:130px;
+    overflow-y:auto;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    line-height:1.7;
+    color:var(--muted);
+  }
+  .log div{color:var(--text);}
+  .log div.err{color:var(--coral);}
+  .log div.ok{color:var(--green);}
+
+  .keybox{
+    margin-top:16px;
+    border:1px solid var(--green);
+    background:rgba(52,211,153,0.06);
+    border-radius:10px;
+    padding:14px 16px;
+    display:none;
+  }
+  .keybox.show{display:block;}
+  .keybox h3{
+    margin:0 0 10px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    color:var(--green);
+    text-transform:uppercase;
+    display:flex;align-items:center;gap:8px;
+  }
+  .paired-devices{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap;}
+  .paired-devices b{color:var(--text);font-weight:600;}
+  .keyrow{display:flex;align-items:center;gap:10px;}
+  #keyValue{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    word-break:break-all;
+    color:var(--text);
+    flex:1;
+  }
+  .copy-btn{
+    background:transparent;border:1px solid var(--border);color:var(--muted);
+    font-size:11px;padding:6px 10px;border-radius:6px;flex-shrink:0;
+  }
+  .copy-btn:hover{color:var(--text);border-color:var(--sender);}
+
+  @media (prefers-reduced-motion: reduce){
+    .step[data-state="active"] .step-dot,.pill.connecting .dot{animation:none;}
+    #deviceMap[data-state] .link-line{animation:none;}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="breadcrumb" href="index.html">&larr; back to overview</a>
+    <div class="card">
+      <p class="eyebrow">Role — Sender</p>
+      <div class="titlerow">
+        <h1>Board A Console</h1>
+        <div id="connState" class="pill disconnected"><span class="dot"></span>Not connected</div>
+      </div>
+
+      <div id="unsupported" class="unsupported">
+        This browser doesn't support Web Bluetooth. Open this page in Chrome or Edge, on desktop or Android, over HTTPS (or localhost).
+      </div>
+
+      <div class="map-wrap">
+        <svg id="deviceMap" viewBox="0 0 600 168" preserveAspectRatio="xMidYMid meet" data-state="idle" aria-hidden="true">
+          <!-- browser / you -->
+          <g transform="translate(150,10)">
+            <rect x="-24" y="0" width="48" height="30" rx="6" fill="none" stroke="var(--muted-2)" stroke-width="1.5"/>
+            <circle cx="0" cy="15" r="2.5" fill="var(--muted-2)"/>
+            <text x="0" y="44" text-anchor="middle" class="chip-label">YOUR BROWSER</text>
+          </g>
+          <!-- bt link -->
+          <line x1="150" y1="46" x2="150" y2="66" class="bt-line"/>
+          <g transform="translate(150,66)">
+            <circle r="11" class="bt-badge-ring"/>
+            <text y="4" text-anchor="middle" class="bt-badge-text">BT</text>
+          </g>
+          <line x1="150" y1="77" x2="150" y2="94" class="bt-line"/>
+
+          <!-- sender chip -->
+          <g class="chip-sender" transform="translate(107,94)">
+            <circle class="role-glow" cx="43" cy="40" r="58" fill="var(--sender)" opacity="0"/>
+            <rect x="0" y="0" width="86" height="80" rx="10" class="chip-body"/>
+            <line x1="-10" y1="16" x2="0" y2="16" class="chip-pin"/>
+            <line x1="-10" y1="34" x2="0" y2="34" class="chip-pin"/>
+            <line x1="-10" y1="52" x2="0" y2="52" class="chip-pin"/>
+            <line x1="-10" y1="70" x2="0" y2="70" class="chip-pin"/>
+            <line x1="86" y1="16" x2="96" y2="16" class="chip-pin"/>
+            <line x1="86" y1="34" x2="96" y2="34" class="chip-pin"/>
+            <line x1="86" y1="52" x2="96" y2="52" class="chip-pin"/>
+            <line x1="86" y1="70" x2="96" y2="70" class="chip-pin"/>
+            <text x="43" y="48" text-anchor="middle" class="chip-letter">A</text>
+            <text x="43" y="98" text-anchor="middle" class="chip-label">SENDER · THIS CONSOLE</text>
+          </g>
+
+          <!-- esp-now link -->
+          <line x1="203" y1="134" x2="397" y2="134" class="link-line"/>
+          <text x="300" y="122" text-anchor="middle" class="chip-label">ESP-NOW</text>
+          <g transform="translate(300,134)">
+            <circle r="12" class="link-badge-ring"/>
+            <circle r="2" fill="var(--muted-2)" class="badge-idle"/>
+            <path d="M-4,-2 l4,4 l4,-6" class="link-badge-icon badge-flow"/>
+            <path d="M-4,-4 l8,8 M4,-4 l-8,8" class="link-badge-icon badge-check" style="display:none"/>
+            <path d="M-4,-4 l8,8 M4,-4 l-8,8" class="link-badge-icon badge-x"/>
+          </g>
+
+          <!-- receiver chip -->
+          <g class="chip-receiver" transform="translate(407,94)">
+            <circle class="role-glow" cx="43" cy="40" r="58" fill="var(--receiver)" opacity="0"/>
+            <rect x="0" y="0" width="86" height="80" rx="10" class="chip-body"/>
+            <line x1="-10" y1="16" x2="0" y2="16" class="chip-pin"/>
+            <line x1="-10" y1="34" x2="0" y2="34" class="chip-pin"/>
+            <line x1="-10" y1="52" x2="0" y2="52" class="chip-pin"/>
+            <line x1="-10" y1="70" x2="0" y2="70" class="chip-pin"/>
+            <line x1="86" y1="16" x2="96" y2="16" class="chip-pin"/>
+            <line x1="86" y1="34" x2="96" y2="34" class="chip-pin"/>
+            <line x1="86" y1="52" x2="96" y2="52" class="chip-pin"/>
+            <line x1="86" y1="70" x2="96" y2="70" class="chip-pin"/>
+            <text x="43" y="48" text-anchor="middle" class="chip-letter">B</text>
+            <text x="43" y="98" text-anchor="middle" class="chip-label">RECEIVER</text>
+          </g>
+          <line x1="450" y1="66" x2="450" y2="82" class="no-ble-x"/>
+          <text x="450" y="58" text-anchor="middle" class="no-ble-label">no BLE radio</text>
+        </svg>
+      </div>
+
+      <ol class="stepper" id="stepper" aria-label="Handshake progress">
+        <li class="step" data-step="bt" data-state="pending"><span class="step-dot"></span>Bluetooth</li>
+        <li class="step" data-step="trigger" data-state="pending"><span class="step-dot"></span>Trigger</li>
+        <li class="step" data-step="capture" data-state="pending"><span class="step-dot"></span>Capture</li>
+        <li class="step" data-step="sync" data-state="pending"><span class="step-dot"></span>Sync</li>
+        <li class="step" data-step="verify" data-state="pending"><span class="step-dot"></span>Verify</li>
+        <li class="step" data-step="result" data-state="pending"><span class="step-dot"></span>Result</li>
+      </ol>
+
+      <p class="stage-line" id="stageLine" aria-live="polite"><span class="muted">Connect to Board A to begin.</span></p>
+
+      <div class="waveform-wrap">
+        <svg id="wave" viewBox="0 0 500 64" preserveAspectRatio="none">
+          <line x1="0" y1="32" x2="500" y2="32" class="wave-baseline"></line>
+          <polyline id="waveLine" class="wave-line" points=""></polyline>
+        </svg>
+      </div>
+
+      <div class="buttons">
+        <button id="connectBtn" class="btn-primary">Connect to Board A</button>
+        <button id="startBtn" class="btn-secondary" disabled>Start handshake</button>
+      </div>
+
+      <p class="log-label">Status log</p>
+      <div id="log" class="log" aria-live="polite"></div>
+
+      <div id="keybox" class="keybox">
+        <h3>Paired</h3>
+        <div class="paired-devices">
+          <span class="pill connected" style="border-color:var(--sender);"><span class="dot" style="background:var(--sender);"></span><b>A · Sender</b></span>
+          <span style="color:var(--muted-2);">&#8596;</span>
+          <span class="pill connected" style="border-color:var(--receiver);"><span class="dot" style="background:var(--receiver);"></span><b>B · Receiver</b></span>
+        </div>
+        <div class="keyrow">
+          <span id="keyValue"></span>
+          <button id="copyBtn" class="copy-btn">Copy key</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const SERVICE_UUID = "9c9a1620-1b02-4c8e-9a10-5a4f39a0c001";
+const CONTROL_UUID = "9c9a1620-1b02-4c8e-9a10-5a4f39a0c002";
+const STATUS_UUID  = "9c9a1620-1b02-4c8e-9a10-5a4f39a0c003";
+
+let device, server, controlChar, statusChar;
+let handshakeTimeout = null;
+
+const connEl     = document.getElementById('connState');
+const logEl      = document.getElementById('log');
+const connectBtn = document.getElementById('connectBtn');
+const startBtn   = document.getElementById('startBtn');
+const keybox     = document.getElementById('keybox');
+const keyValue   = document.getElementById('keyValue');
+const stageLine  = document.getElementById('stageLine');
+const stepperEl  = document.getElementById('stepper');
+const mapSvg     = document.getElementById('deviceMap');
+
+// ---- cross-tab sync so receiver.html can mirror this session live ----
+let channel = null;
+try { channel = new BroadcastChannel('shake-to-pair-sync'); } catch (e) { channel = null; }
+let lastSnapshot = { mapState: 'idle', steps: {}, stage: 'Connect to Board A to begin.', log: [], keyed: false, keyValue: '' };
+
+function broadcast() {
+  if (!channel) return;
+  lastSnapshot.mapState = mapSvg.dataset.state;
+  lastSnapshot.steps = {};
+  stepperEl.querySelectorAll('.step').forEach(li => lastSnapshot.steps[li.dataset.step] = li.dataset.state);
+  lastSnapshot.stage = stageLine.textContent;
+  lastSnapshot.keyed = keybox.classList.contains('show');
+  lastSnapshot.keyValue = keyValue.textContent;
+  channel.postMessage({ type: 'state', payload: lastSnapshot });
+}
+if (channel) {
+  channel.addEventListener('message', (ev) => {
+    if (ev.data && ev.data.type === 'ping') broadcast();
+  });
+  setInterval(broadcast, 3000); // heartbeat, so receiver.html can tell this console is still open
+}
+
+function logLine(text, cls) {
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = '> ' + text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+  lastSnapshot.log.push({ text, cls });
+  if (channel) channel.postMessage({ type: 'log', payload: { text, cls } });
+}
+
+function setConnState(cls, text) {
+  connEl.className = 'pill ' + cls;
+  connEl.innerHTML = '<span class="dot"></span>' + text;
+}
+
+function setStage(html) {
+  stageLine.innerHTML = html;
+  broadcast();
+}
+
+function setStep(id, state) {
+  const el = stepperEl.querySelector(`[data-step="${id}"]`);
+  if (el) el.dataset.state = state;
+  broadcast();
+}
+
+function resetPipelineSteps() {
+  ['trigger', 'capture', 'sync', 'verify', 'result'].forEach(id => setStep(id, 'pending'));
+}
+
+function setMapState(state) {
+  mapSvg.dataset.state = state;
+  broadcast();
+}
+
+if (!navigator.bluetooth) {
+  document.getElementById('unsupported').classList.add('show');
+  connectBtn.disabled = true;
+}
+
+connectBtn.addEventListener('click', connect);
+startBtn.addEventListener('click', startHandshake);
+document.getElementById('copyBtn').addEventListener('click', () => {
+  navigator.clipboard.writeText(keyValue.textContent);
+  logLine('key copied to clipboard');
+});
+
+async function connect() {
+  try {
+    setStep('bt', 'active');
+    setMapState('pairing');
+    setConnState('connecting', 'Pairing Bluetooth…');
+    setStage('<span class="muted">Pairing Bluetooth&hellip; choose Board A from the picker.</span>');
+    logLine('opening device picker...');
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }]
+    });
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    logLine(`pairing Bluetooth with ${device.name || 'Board A'}...`);
+    server = await device.gatt.connect();
+
+    const service = await server.getPrimaryService(SERVICE_UUID);
+    controlChar = await service.getCharacteristic(CONTROL_UUID);
+    statusChar  = await service.getCharacteristic(STATUS_UUID);
+
+    await statusChar.startNotifications();
+    statusChar.addEventListener('characteristicvaluechanged', onStatusChanged);
+
+    setConnState('connected', `Bluetooth paired — ${device.name || 'Board A'}`);
+    logLine('Bluetooth paired.', 'ok');
+    setStep('bt', 'done');
+    setMapState('idle');
+    setStage('<b>Ready.</b> <span class="muted">Board A is paired — start a handshake whenever you like.</span>');
+    startBtn.disabled = false;
+    setWaveState('idle');
+  } catch (err) {
+    console.error(err);
+    setConnState('disconnected', 'Not connected');
+    setStep('bt', 'fail');
+    setMapState('idle');
+    logLine('Bluetooth pairing failed: ' + err.message, 'err');
+    setStage('<span class="muted">Bluetooth pairing failed &mdash; try again.</span>');
+  }
+}
+
+function onDisconnected() {
+  setConnState('disconnected', 'Not connected');
+  logLine('Bluetooth disconnected', 'err');
+  setStep('bt', 'pending');
+  resetPipelineSteps();
+  setMapState('idle');
+  setStage('<span class="muted">Bluetooth disconnected. Reconnect to Board A to continue.</span>');
+  startBtn.disabled = true;
+  setWaveState('idle');
+}
+
+async function startHandshake() {
+  try {
+    resetPipelineSteps();
+    keybox.classList.remove('show');
+    clearTimeout(handshakeTimeout);
+    startBtn.disabled = true;
+    setStep('trigger', 'active');
+    setStage('<b>Handshake requested.</b> <span class="muted">Get ready to shake both boards together.</span>');
+    const enc = new TextEncoder();
+    await controlChar.writeValue(enc.encode('S'));
+    logLine('handshake requested — shake both boards together');
+    setStep('trigger', 'done');
+    handshakeTimeout = setTimeout(() => { startBtn.disabled = false; }, 15000);
+  } catch (err) {
+    logLine('failed to start handshake: ' + err.message, 'err');
+    setStep('trigger', 'fail');
+    startBtn.disabled = false;
+  }
+}
+
+function humanizeFail(raw) {
+  const map = {
+    too_few_samples: "not enough motion samples captured",
+    duration_out_of_range: "capture duration was out of range",
+    zero_variance: "no motion detected during capture",
+    low_correlation: "motion signatures didn't correlate closely enough",
+    frequency_out_of_band: "shake frequency was outside the expected range",
+    hash_mismatch: "generated keys didn't match between boards",
+    no_response_from_board_b: "no response from Board B — check it's powered and in range",
+    no_active_axes: "no usable motion axes found"
+  };
+  return map[raw] || raw.replace(/_/g, ' ');
+}
+
+function onStatusChanged(event) {
+  const value = new TextDecoder().decode(event.target.value);
+  if (!value) return;
+  logLine('status: ' + value);
+
+  if (value === 'CAPTURING') {
+    setStep('capture', 'active');
+    setMapState('capturing');
+    setWaveState('capturing');
+    setStage('<b>Capturing motion.</b> <span class="muted">Shake both boards together now.</span>');
+  } else if (value === 'WAITING_FOR_PEER') {
+    setStep('capture', 'done');
+    setStep('sync', 'active');
+    setMapState('syncing');
+    setWaveState('capturing');
+    setStage('<b>Syncing with Board B.</b> <span class="muted">Waiting on Receiver\'s motion data over ESP-NOW&hellip;</span>');
+  } else if (value === 'PROCESSING') {
+    setStep('sync', 'done');
+    setStep('verify', 'active');
+    setMapState('verifying');
+    setWaveState('processing');
+    setStage('<b>Verifying.</b> <span class="muted">Comparing motion signatures and generating the shared key&hellip;</span>');
+  } else if (value.startsWith('KEY:')) {
+    const key = value.substring(4);
+    keyValue.textContent = key;
+    keybox.classList.add('show');
+    setStep('verify', 'done');
+    setStep('result', 'done');
+    setMapState('success');
+    setConnState('keyed', 'Paired');
+    setWaveState('keyed');
+    setStage('<b style="color:var(--green);">Paired.</b> <span class="muted">Board A and Board B generated matching keys.</span>');
+    clearTimeout(handshakeTimeout);
+    startBtn.disabled = false;
+  } else if (value.startsWith('FAIL:')) {
+    const reason = humanizeFail(value.substring(5));
+    ['capture', 'sync', 'verify'].forEach(id => {
+      const el = stepperEl.querySelector(`[data-step="${id}"]`);
+      if (el && el.dataset.state === 'active') el.dataset.state = 'fail';
+    });
+    setStep('result', 'fail');
+    setMapState('fail');
+    setConnState('connected', `Bluetooth paired — ${device.name || 'Board A'}`);
+    setWaveState('fail');
+    setStage(`<b style="color:var(--coral);">Failed.</b> <span class="muted">${reason}.</span>`);
+    clearTimeout(handshakeTimeout);
+    startBtn.disabled = false;
+  } else if (value === 'IDLE') {
+    setWaveState('idle');
+  }
+}
+
+// ---- Waveform, a live visual proxy for the current stage (not raw sensor telemetry) ----
+const waveLine = document.getElementById('waveLine');
+const POINTS = 50;
+let waveState = 'idle';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function setWaveState(state) {
+  waveState = state;
+  waveLine.classList.remove('state-keyed', 'state-fail');
+  if (state === 'keyed') waveLine.classList.add('state-keyed');
+  if (state === 'fail') waveLine.classList.add('state-fail');
+}
+
+function renderWave(t) {
+  let amp;
+  if (waveState === 'idle')      amp = 3;
+  else if (waveState === 'capturing') amp = 22;
+  else if (waveState === 'processing') amp = 12;
+  else if (waveState === 'keyed')     amp = reduceMotion ? 0 : 5;
+  else                                 amp = 9;
+
+  let pts = [];
+  for (let i = 0; i < POINTS; i++) {
+    const x = (i / (POINTS - 1)) * 500;
+    const noise = Math.sin(i * 0.9 + t) * amp + Math.sin(i * 0.31 + t * 1.7) * (amp * 0.4);
+    const y = 32 + (reduceMotion && waveState === 'idle' ? 0 : noise);
+    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  waveLine.setAttribute('points', pts.join(' '));
+}
+
+let tick = 0;
+function loop() {
+  tick += (waveState === 'capturing') ? 0.35 : (waveState === 'processing' ? 0.2 : 0.08);
+  renderWave(tick);
+  requestAnimationFrame(loop);
+}
+renderWave(0);
+if (!reduceMotion) requestAnimationFrame(loop);
+
+logLine('connect to Board A to begin');
+</script>
+</body>
+</html>
