@@ -288,6 +288,8 @@
   .btn-primary:hover:not(:disabled){opacity:0.88;}
   .btn-secondary{background:transparent;border-color:var(--border);color:var(--text);}
   .btn-secondary:hover:not(:disabled){border-color:var(--receiver);}
+  .btn-danger{background:transparent;border-color:var(--coral);color:var(--coral);}
+  .btn-danger:hover:not(:disabled){background:rgba(255,107,107,0.1);}
   button:focus-visible{outline:2px solid var(--receiver);outline-offset:2px;}
 
   .log-label{
@@ -447,6 +449,7 @@
 
       <div class="buttons">
         <button id="connectBtn" class="btn-primary">Connect to Board B</button>
+        <button id="disconnectBtn" class="btn-danger" disabled>Disconnect</button>
       </div>
 
       <p class="log-label">Status log</p>
@@ -476,6 +479,7 @@ let device, server, statusChar;
 const linkEl     = document.getElementById('linkState');
 const logEl      = document.getElementById('log');
 const connectBtn = document.getElementById('connectBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
 const keybox     = document.getElementById('keybox');
 const keyValue   = document.getElementById('keyValue');
 const stageLine  = document.getElementById('stageLine');
@@ -523,6 +527,7 @@ if (!navigator.bluetooth) {
 }
 
 connectBtn.addEventListener('click', connect);
+disconnectBtn.addEventListener('click', disconnectDevice);
 
 async function connect() {
   try {
@@ -550,6 +555,8 @@ async function connect() {
     setStep('bt', 'done');
     setMapState('idle');
     setStage('<b>Ready.</b> <span class="muted">Board B is paired &mdash; waiting for Board A to trigger a handshake.</span>');
+    connectBtn.disabled = true;
+    disconnectBtn.disabled = false;
     setWaveState('idle');
   } catch (err) {
     console.error(err);
@@ -568,7 +575,29 @@ function onDisconnected() {
   resetPipelineSteps();
   setMapState('idle');
   setStage('<span class="muted">Bluetooth disconnected. Reconnect to Board B to continue.</span>');
+  connectBtn.disabled = false;
+  disconnectBtn.disabled = true;
   setWaveState('idle');
+  statusChar = null;
+}
+
+async function disconnectDevice() {
+  if (!device) return;
+  disconnectBtn.disabled = true;
+  try {
+    logLine('disconnecting from Board B...');
+    if (device.gatt && device.gatt.connected) {
+      device.gatt.disconnect();
+    }
+    if (typeof device.forget === 'function') {
+      await device.forget();
+      logLine('Board B unpaired.', 'ok');
+    }
+  } catch (err) {
+    logLine('disconnect error: ' + err.message, 'err');
+  } finally {
+    device = null;
+  }
 }
 
 function humanizeFail(raw) {

@@ -275,6 +275,8 @@
   .btn-primary:hover:not(:disabled){opacity:0.88;}
   .btn-secondary{background:transparent;border-color:var(--border);color:var(--text);}
   .btn-secondary:hover:not(:disabled){border-color:var(--sender);}
+  .btn-danger{background:transparent;border-color:var(--coral);color:var(--coral);}
+  .btn-danger:hover:not(:disabled){background:rgba(255,107,107,0.1);}
   button:focus-visible{outline:2px solid var(--sender);outline-offset:2px;}
 
   .log-label{
@@ -438,7 +440,8 @@
 
       <div class="buttons">
         <button id="connectBtn" class="btn-primary">Connect to Board A</button>
-        <button id="startBtn" class="btn-secondary" disabled>Start handshake</button>
+        <button id="startBtn" class="btn-primary" disabled>Start handshake</button>
+        <button id="disconnectBtn" class="btn-danger" disabled>Disconnect</button>
       </div>
 
       <p class="log-label">Status log</p>
@@ -471,6 +474,7 @@ const connEl     = document.getElementById('connState');
 const logEl      = document.getElementById('log');
 const connectBtn = document.getElementById('connectBtn');
 const startBtn   = document.getElementById('startBtn');
+const disconnectBtn = document.getElementById('disconnectBtn');
 const keybox     = document.getElementById('keybox');
 const keyValue   = document.getElementById('keyValue');
 const stageLine  = document.getElementById('stageLine');
@@ -541,6 +545,7 @@ if (!navigator.bluetooth) {
 
 connectBtn.addEventListener('click', connect);
 startBtn.addEventListener('click', startHandshake);
+disconnectBtn.addEventListener('click', disconnectDevice);
 document.getElementById('copyBtn').addEventListener('click', () => {
   navigator.clipboard.writeText(keyValue.textContent);
   logLine('key copied to clipboard');
@@ -574,6 +579,8 @@ async function connect() {
     setMapState('idle');
     setStage('<b>Ready.</b> <span class="muted">Board A is paired — start a handshake whenever you like.</span>');
     startBtn.disabled = false;
+    connectBtn.disabled = true;
+    disconnectBtn.disabled = false;
     setWaveState('idle');
   } catch (err) {
     console.error(err);
@@ -593,7 +600,30 @@ function onDisconnected() {
   setMapState('idle');
   setStage('<span class="muted">Bluetooth disconnected. Reconnect to Board A to continue.</span>');
   startBtn.disabled = true;
+  connectBtn.disabled = false;
+  disconnectBtn.disabled = true;
   setWaveState('idle');
+  controlChar = null;
+  statusChar = null;
+}
+
+async function disconnectDevice() {
+  if (!device) return;
+  disconnectBtn.disabled = true;
+  try {
+    logLine('disconnecting from Board A...');
+    if (device.gatt && device.gatt.connected) {
+      device.gatt.disconnect();
+    }
+    if (typeof device.forget === 'function') {
+      await device.forget();
+      logLine('Board A unpaired.', 'ok');
+    }
+  } catch (err) {
+    logLine('disconnect error: ' + err.message, 'err');
+  } finally {
+    device = null;
+  }
 }
 
 async function startHandshake() {

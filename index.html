@@ -267,8 +267,6 @@
           <text x="43" y="48" text-anchor="middle" class="chip-letter">B</text>
           <text x="43" y="98" text-anchor="middle" class="chip-label">RECEIVER</text>
         </g>
-        <line x1="450" y1="66" x2="450" y2="82" class="no-ble-x"/>
-        <text x="450" y="58" text-anchor="middle" class="no-ble-label">no BLE radio</text>
       </svg>
     </div>
 
@@ -283,19 +281,19 @@
       <a class="role-card receiver" href="receiver.html">
         <p class="role-eyebrow">Role — Receiver</p>
         <h2>Board B</h2>
-        <p>No Bluetooth radio — talks to Board A over ESP-NOW only. Open this console to watch the handshake live.</p>
-        <p class="role-meta">ESP-NOW &middot; MPU6050 &middot; Mirrors Sender</p>
+        <p>Pairs directly with your browser over Bluetooth too — open this console to connect to Board B and watch the handshake live.</p>
+        <p class="role-meta">Bluetooth &middot; ESP-NOW &middot; MPU6050</p>
         <span class="role-cta">Open Receiver monitor &rarr;</span>
       </a>
     </div>
-    <p class="fine-note">Board B has no Bluetooth hardware in this build, so the Receiver console mirrors the live session from an open Sender console in the same browser rather than connecting on its own.</p>
+    <p class="fine-note">Both boards pair with your browser independently over Bluetooth — no PIN or code to type, just tap to pair. Each console can also disconnect (and unpair) its board on demand.</p>
 
     <p class="howto-label">How it works</p>
     <ol class="howto">
       <li>
         <p class="num">01</p>
         <h3>Pair</h3>
-        <p>Open the Sender console and pair your browser with Board A over Bluetooth.</p>
+        <p>Open each console and pair your browser with Board A and Board B over Bluetooth — one tap, no code.</p>
       </li>
       <li>
         <p class="num">02</p>
